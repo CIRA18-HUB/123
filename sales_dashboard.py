@@ -148,11 +148,11 @@ st.markdown('<div class="main-header">销售数据分析仪表盘</div>', unsafe
 # 格式化数值的函数
 def format_yuan(value):
     if value >= 100000000:  # 亿元级别
-        return f"{value / 100000000:.2f}亿元"
+        return f"{value / 100000000:.4f}亿元"
     elif value >= 10000:  # 万元级别
-        return f"{value / 10000:.2f}万元"
+        return f"{value / 10000:.4f}万元"
     else:
-        return f"{value:,.0f}元"
+        return f"{value:.4f}元"
 
 
 # 加载数据函数
@@ -1443,9 +1443,37 @@ with tabs[4]:  # 市场渗透率
 
             st.plotly_chart(fig_region_penetration, use_container_width=True)
 
-            # 区域渗透率表格
+            # 区域渗透率详细数据 - 改为图表而不是表格
             st.markdown('<div class="sub-header section-gap">区域渗透率详细数据</div>', unsafe_allow_html=True)
-            st.dataframe(region_penetration)
+
+            # 创建柱状图
+            fig_penetration = px.bar(
+                region_penetration,
+                x='所属区域',
+                y='渗透率',
+                text=region_penetration['渗透率'].apply(lambda x: f"{x:.2f}%"),
+                color='所属区域',
+                title='各区域新品渗透率',
+                labels={'渗透率': '渗透率 (%)', '所属区域': '区域'},
+                height=500
+            )
+
+            fig_penetration.update_traces(
+                textposition='outside',
+                textfont=dict(size=14)
+            )
+
+            fig_penetration.update_layout(
+                xaxis_title=dict(text="区域", font=dict(size=16)),
+                yaxis_title=dict(text="渗透率 (%)", font=dict(size=16)),
+                xaxis_tickfont=dict(size=14),
+                yaxis_tickfont=dict(size=14),
+                margin=dict(t=60, b=80, l=80, r=60),
+                plot_bgcolor='rgba(0,0,0,0)',
+                showlegend=False
+            )
+
+            st.plotly_chart(fig_penetration, use_container_width=True)
 
             # 渗透率和销售额关系
             st.markdown('<div class="sub-header section-gap">渗透率与销售额的关系</div>', unsafe_allow_html=True)
@@ -1458,12 +1486,13 @@ with tabs[4]:  # 市场渗透率
             region_analysis = region_penetration.merge(region_new_sales, on='所属区域', how='left')
             region_analysis['新品销售额'] = region_analysis['新品销售额'].fillna(0)
 
-            # 创建气泡图
+            # 气泡图改进
             fig_bubble = px.scatter(
                 region_analysis,
                 x='渗透率',
                 y='新品销售额',
                 size='客户总数',
+                size_max=30,  # 限制最大气泡尺寸
                 color='所属区域',
                 hover_name='所属区域',
                 text='所属区域',
@@ -1476,26 +1505,27 @@ with tabs[4]:  # 市场渗透率
                 height=500
             )
 
-            # 修复y轴显示单位
-            fig_bubble.update_yaxes(
-                tickprefix='¥',  # 添加货币前缀
-                tickformat=',',  # 使用千位分隔符
-                type='linear'  # 强制使用线性刻度
-            )
-
+            # 添加清晰的数据标签
             fig_bubble.update_traces(
                 textposition='top center',
-                marker=dict(sizemode='diameter', sizeref=0.1),
-                textfont=dict(size=14)
+                marker=dict(sizemode='diameter', sizeref=0.15),  # 调整气泡大小参考值
+                textfont=dict(size=14, color='black', family="Arial, sans-serif")
             )
 
+            # 改进坐标轴刻度和网格线
             fig_bubble.update_layout(
-                xaxis_title=dict(text="渗透率 (%)", font=dict(size=16)),
-                yaxis_title=dict(text="新品销售额 (元)", font=dict(size=16)),
-                xaxis_tickfont=dict(size=14),
-                yaxis_tickfont=dict(size=14),
-                margin=dict(t=60, b=80, l=80, r=60),
-                plot_bgcolor='rgba(0,0,0,0)'
+                xaxis=dict(
+                    showgrid=True,
+                    gridcolor='lightgray',
+                    dtick=5  # 设置x轴刻度间隔
+                ),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor='lightgray',
+                    tickprefix='¥',
+                    tickformat=','
+                ),
+                plot_bgcolor='white'
             )
 
             st.plotly_chart(fig_bubble, use_container_width=True)
